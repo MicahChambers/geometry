@@ -1,5 +1,8 @@
+#include "simple_svg.hpp"
+
 #include <iostream>
-#include <simple_svg.hpp>
+
+using namespace svg;
 
 int main() {
     std::cerr << "Hello world" << std::endl;

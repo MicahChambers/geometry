@@ -19,5 +19,6 @@ cc_library(
 )
     """,
         sha256 = "ddd2a014595e038ec98b1dd56892fbff4812b8b95617135912fba54b0f001bf7",
+        strip_prefix = "simple-svg-1029abc385b80adcda445b5b631c234d5260e803",
         url = "https://github.com/adishavit/simple-svg/archive/1029abc385b80adcda445b5b631c234d5260e803.zip",
     )

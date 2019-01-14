@@ -3,6 +3,8 @@
 
 #include "gtest/gtest.h"
 
+#include <ostream>
+
 #include <limits.h>
 #include <random>
 
@@ -11,6 +13,36 @@ namespace {
 struct Point2f {
     float x, y;
 };
+
+std::ostream& operator<<(std::ostream& os, const std::vector<Point2f>& foo) {
+    os << "[";
+    for (size_t i = 0; i < foo.size(); ++i) {
+        os << "(" << foo[i].x << ", " << foo[i].y << "), ";
+    }
+    os << "]";
+    return os;
+}
+
+template <typename T>
+void ExpectPolygonsMatch(const T& poly1, const T& poly2) {
+    // find a good match
+    size_t sz1 = poly1.size();
+    size_t sz2 = poly2.size();
+    EXPECT_EQ(sz1, sz2);
+    size_t i;
+    for (i = 0; i < poly1.size(); ++i) {
+        if (std::abs(poly1[i].x - poly2[0].x) < 1e-7 &&
+            std::abs(poly1[i].y - poly2[0].y) < 1e-7) {
+            break;
+        }
+    }
+
+    for (size_t j = 0; j < poly1.size(); ++j) {
+        size_t k = (i + j >= poly1.size() ? i + j - poly1.size() : i + j);
+        EXPECT_NEAR(poly1[k].x, poly2[j].x, 1e-5);
+        EXPECT_NEAR(poly1[k].y, poly2[j].y, 1e-5);
+    }
+}
 
 // Tests factorial of negative numbers.
 TEST(Intersection, TriangleSquare1) {
@@ -27,15 +59,7 @@ TEST(Intersection, TriangleSquare1) {
         {-0.5, -0.5}, {-0.26794916, -0.732051},
     };
 
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        EXPECT_FLOAT_EQ(expected[i].x, out[i].x);
-        EXPECT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
-    ASSERT_EQ(expected.size(), out.size());
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        ASSERT_FLOAT_EQ(expected[i].x, out[i].x);
-        ASSERT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
+    ExpectPolygonsMatch(expected, out);
 }
 
 TEST(Intersection, TriangleSquare2) {
@@ -51,15 +75,7 @@ TEST(Intersection, TriangleSquare2) {
         {0.70710671, -0.169102}, {0.70710671, 0.169102},
     };
 
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        EXPECT_FLOAT_EQ(expected[i].x, out[i].x);
-        EXPECT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
-    ASSERT_EQ(expected.size(), out.size());
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        ASSERT_FLOAT_EQ(expected[i].x, out[i].x);
-        ASSERT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
+    ExpectPolygonsMatch(expected, out);
 }
 
 TEST(Intersection, TriangleSquare3) {
@@ -78,15 +94,7 @@ TEST(Intersection, TriangleSquare3) {
         {0.927107, -0.042084951}, {0.927107, 0.042084951},
     };
 
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        EXPECT_FLOAT_EQ(expected[i].x, out[i].x);
-        EXPECT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
-    ASSERT_EQ(expected.size(), out.size());
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        ASSERT_FLOAT_EQ(expected[i].x, out[i].x);
-        ASSERT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
+    ExpectPolygonsMatch(expected, out);
 }
 
 TEST(Intersection, SquareSquare) {
@@ -95,21 +103,10 @@ TEST(Intersection, SquareSquare) {
     std::vector<Point2f> out(poly1.size() + poly2.size());
     EXPECT_TRUE(ComputeConvexPolygonIntersection<std::vector<Point2f>>(
         poly1, poly2, &out));
-    for (size_t i = 0; i < out.size(); ++i) {
-        std::cerr << out[i].x << ", " << out[i].y << std::endl;
-    }
 
     std::vector<Point2f> expected{{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
 
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        EXPECT_FLOAT_EQ(expected[i].x, out[i].x);
-        EXPECT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
-    ASSERT_EQ(expected.size(), out.size());
-    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
-        ASSERT_FLOAT_EQ(expected[i].x, out[i].x);
-        ASSERT_FLOAT_EQ(expected[i].y, out[i].y);
-    }
+    ExpectPolygonsMatch(expected, out);
 }
 
 }  // namespace

@@ -9,14 +9,19 @@
 namespace inter_impl {
 
 template <typename PointA, typename PointB>
+bool DistanceSquared(const PointA& ptA, const PointB& ptB) {
+    return std::pow(GetX(ptA) - GetX(ptB), 2) +
+           std::pow(GetY(ptA) - GetY(ptB), 2);
+}
+
+template <typename PointA, typename PointB>
 bool AlmostEqual(const PointA& ptA, const PointB& ptB) {
     // the machine epsilon has to be scaled to the magnitude of the values
     // used and multiplied by the desired precision in ULPs (units in the
     // last place)
     constexpr int ULP = 2;
 
-    const double distSq =
-        std::pow(GetX(ptA) - GetX(ptB), 2) + std::pow(GetY(ptA) - GetY(ptB), 2);
+    const double distSq = DistanceSquared(ptA, ptB);
     const double mag = std::pow(GetX(ptA), 2) + std::pow(GetY(ptA), 2) +
                        std::pow(GetX(ptB), 2) + std::pow(GetY(ptB), 2);
     return distSq <= std::numeric_limits<double>::epsilon() * mag * ULP ||
@@ -57,7 +62,6 @@ void Advance(bool isInside, const It& begin, const It& end, OutIt& out, It& it,
              It& itn) {
     // advance B
     if (isInside) {
-        std::cerr << "add: " << it->x << ", " << it->y << std::endl;
         *out++ = *itn;
     }
     ++it;
@@ -206,11 +210,6 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                 // already saw this intersection, done
                 break;
             }
-            std::cerr << "inside: " << inside
-                      << ", intersection at triangle ind:"
-                      << std::distance(beginA, itA)
-                      << ", square ind: " << std::distance(beginB, itB) << ", "
-                      << "(" << tmp.x << ", " << tmp.y << ")" << std::endl;
             *out++ = tmp;
 
             auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
@@ -224,34 +223,48 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
         }
 
         // Advance either p or q
-        std::cerr << "inside: " << (inside == 'A' ? "triangle" : "square")
-                  << " ind triangle: " << std::distance(beginA, itA)
-                  << " ind square: " << std::distance(beginB, itB) << std::endl;
-        if (inter_impl::Cross(*itA, *itAn, *itB, *itBn) >= 0) {
+        double cross = inter_impl::Cross(*itA, *itAn, *itB, *itBn);
+        if (cross == 0) {
             int side = inter_impl::LineSide(*itA, *itAn, *itBn);
-            std::cerr << "alpha: " << side << std::endl;
             if (side > 0) {
                 // advance A
-                std::cerr << "advance triangle" << std::endl;
+                inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
+                                    itAn);
+            } else if (side < 0) {
+                // advance B
+                inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
+                                    itBn);
+            } else {
+                // must advance whichever point is nearest on the colinear line
+                double aDist = inter_impl::DistanceSquared(*itA, *itAn);
+                double bDist = inter_impl::DistanceSquared(*itA, *itBn);
+                if (aDist <= bDist) {
+                    // advance a without writing
+                    inter_impl::Advance(false, beginA, endA, out, itA, itAn);
+                } else {
+                    // advance b without writing
+                    inter_impl::Advance(false, beginB, endB, out, itB, itBn);
+                }
+            }
+        } else if (cross >= 0) {
+            int side = inter_impl::LineSide(*itA, *itAn, *itBn);
+            if (side > 0) {
+                // advance A
                 inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
                                     itAn);
             } else {
                 // advance B
-                std::cerr << "advance square" << std::endl;
                 inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
                                     itBn);
             }
         } else {
             int side = inter_impl::LineSide(*itB, *itBn, *itAn);
-            std::cerr << "beta: " << side << std::endl;
             if (side > 0) {
                 // advance B
-                std::cerr << "advance square" << std::endl;
                 inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
                                     itBn);
             } else {
                 // advance A
-                std::cerr << "advance triangle" << std::endl;
                 inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
                                     itAn);
             }

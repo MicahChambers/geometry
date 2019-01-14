@@ -193,7 +193,7 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
 
     // Find intersection of A into B
     size_t n = std::distance(beginA, endA) + std::distance(beginB, endB);
-    char inside = 'X';  // 1 => A, 2 => B
+    char inside = 'X';  // X => None, A => A, B => B
     OutputIt firstInt = out;
     It itA = beginA;
     It itB = beginB;
@@ -224,18 +224,10 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
 
         // Advance either p or q
         double cross = inter_impl::Cross(*itA, *itAn, *itB, *itBn);
-        if (cross == 0) {
+        if (cross >= 0) {
             int side = inter_impl::LineSide(*itA, *itAn, *itBn);
-            if (side > 0) {
-                // advance A
-                inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
-                                    itAn);
-            } else if (side < 0) {
-                // advance B
-                inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
-                                    itBn);
-            } else {
-                // must advance whichever point is nearest on the colinear line
+            if (side == 0 && cross == 0) {
+                // colinear must advance whichever point is nearest
                 double aDist = inter_impl::DistanceSquared(*itA, *itAn);
                 double bDist = inter_impl::DistanceSquared(*itA, *itBn);
                 if (aDist <= bDist) {
@@ -245,10 +237,7 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                     // advance b without writing
                     inter_impl::Advance(false, beginB, endB, out, itB, itBn);
                 }
-            }
-        } else if (cross >= 0) {
-            int side = inter_impl::LineSide(*itA, *itAn, *itBn);
-            if (side > 0) {
+            } else if (side > 0) {
                 // advance A
                 inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
                                     itAn);

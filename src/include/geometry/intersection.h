@@ -228,7 +228,8 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                   << " ind triangle: " << std::distance(beginA, itA)
                   << " ind square: " << std::distance(beginB, itB) << std::endl;
         if (inter_impl::Cross(*itA, *itAn, *itB, *itBn) >= 0) {
-            auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
+            int side = inter_impl::LineSide(*itA, *itAn, *itBn);
+            std::cerr << "alpha: " << side << std::endl;
             if (side > 0) {
                 // advance A
                 std::cerr << "advance triangle" << std::endl;
@@ -241,7 +242,8 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                                     itBn);
             }
         } else {
-            auto side = inter_impl::LineSide(*itB, *itBn, *itAn);
+            int side = inter_impl::LineSide(*itB, *itBn, *itAn);
+            std::cerr << "beta: " << side << std::endl;
             if (side > 0) {
                 // advance B
                 std::cerr << "advance square" << std::endl;

@@ -24,3 +24,12 @@ cc_binary(
         "@simple_svg",
     ],
 )
+
+cc_binary(
+    name = "square_square_intersection_1",
+    srcs = ["square_square_intersection_1.cpp"],
+    deps = [
+        "//src:geometry",
+        "@simple_svg",
+    ],
+)

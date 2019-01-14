@@ -9,6 +9,11 @@ cc_binary(
 )
 
 cc_library(
+    name = "point_polygon",
+    srcs = ["point_polygon.h"],
+)
+
+cc_library(
     name = "shape",
     srcs = ["shape.h"],
 )
@@ -19,10 +24,21 @@ cc_library(
 )
 
 cc_library(
+    name = "intersection",
+    srcs = ["intersection.h"],
+    deps = [
+        ":accessors",
+        ":point_polygon",
+    ],
+)
+
+cc_library(
     name = "convex_hull",
     srcs = [
-        "accessors.h",
         "convex_hull.h",
+    ],
+    deps = [
+        ":accessors",
     ],
 )
 
@@ -34,6 +50,19 @@ cc_test(
     ],
     deps = [
         ":convex_hull",
+        ":shape",
+        "@gtest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "intersection_test",
+    size = "small",
+    srcs = [
+        "intersection_test.cpp",
+    ],
+    deps = [
+        ":intersection",
         ":shape",
         "@gtest//:gtest_main",
     ],

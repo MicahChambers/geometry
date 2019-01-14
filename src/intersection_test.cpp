@@ -1,4 +1,4 @@
-#include "convex_hull.h"
+#include "intersection.h"
 #include "shape.h"
 
 #include "gtest/gtest.h"
@@ -15,8 +15,11 @@ struct Point2f {
 // Tests factorial of negative numbers.
 TEST(Intersection, TwoTriangle) {
     std::vector<Point2f> poly1;
-    auto out = ComputeConvexHullInPlace(poly.begin(), poly.end());
-    EXPECT_EQ(out, poly.begin());
-    EXPECT_EQ(out, poly.end());
+    std::vector<Point2f> poly2;
+    MakeRegularPolygon(3, poly1.begin());
+    MakeRegularPolygon(4, poly1.begin());
+    std::vector<Point2f> out(poly1.size() + poly2.size());
+    EXPECT_TRUE(ComputeConvexPolygonIntersection<std::vector<Point2f>>(
+        poly1, poly2, &out));
 }
 }  // namespace

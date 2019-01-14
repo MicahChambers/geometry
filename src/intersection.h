@@ -1,18 +1,29 @@
 #pragma once
+#include "point_polygon.h"
+
+#include <cassert>
+#include <cmath>
 #include <iterator>
 
-namespace intersection_impl {
+namespace inter_impl {
 /// Return a new vector that is perpendicular, left to vec
 template <typename Vector>
 Vector ZCross(const Vector& vec) {
     return Vector{-vec.y, vec.x};
 }
 
+template <typename PointT>
+double Cross(const PointT& p0, const PointT& p1, const PointT& q0,
+             const PointT& q1) {
+    return (GetX(p1) - GetX(p0)) * (GetY(q1) - GetY(q0)) -
+           (GetY(p1) - GetY(p0)) * (GetX(q1) - GetX(q0));
+}
+
 /// Which side of segment (pt0 -- pt1) is q on?
 ///
 /// return 1 for left, 0 for on, -1 for right
 template <typename PointT>
-int LineSide(const PointT& pt0, const PointT& pt1, const PointT& q) {
+int8_t LineSide(const PointT& pt0, const PointT& pt1, const PointT& q) {
     const double tmp =
         -(pt1.y - pt0.y) * (q.x - pt0.x) + (pt1.x - pt0.x) * (q.y - pt0.y);
     if (tmp < 0) {
@@ -23,7 +34,25 @@ int LineSide(const PointT& pt0, const PointT& pt1, const PointT& q) {
         return 0;
     }
 }
-}  // namespace intersection_impl
+
+template <typename It, typename OutIt>
+void Advance(bool isInside, const It& begin, const It& end, OutIt& out, It& it,
+             It& itn) {
+    // advance B
+    if (isInside) {
+        *out++ = *itn;
+    }
+    ++it;
+    ++itn;
+    if (it == end) {
+        it = begin;
+    }
+    if (itn == end) {
+        itn = begin;
+    }
+}
+
+}  // namespace inter_impl
 
 /// Computes intersection of two line segments. If the two lines don't
 /// intersect, the output parameter is untouched.
@@ -31,10 +60,10 @@ int LineSide(const PointT& pt0, const PointT& pt1, const PointT& q) {
 /// return: 0 for non-intersecting
 ///         1 for intersecting
 ///         2 for coincident
-template <typename PointT>
+template <typename PointT, typename OutPointT>
 int ComputeIntersectionPoint(const PointT& a0, const PointT& a1,
                              const PointT& b0, const PointT& b1,
-                             PointT* out = nullptr) {
+                             OutPointT* out) {
     const double x1 = a0.x;
     const double y1 = a0.y;
 
@@ -58,24 +87,24 @@ int ComputeIntersectionPoint(const PointT& a0, const PointT& a1,
     // If the denominator and numerator for the equations for ua and ub are 0
     // then the two lines are coincident. Considering round off error, if either
     // are nan, then consider them coincident
-    if((std::isnan(uA) || std::isnan(uB)) {
+    if ((std::isnan(uA) || std::isnan(uB))) {
         return 2;
     }
 
     // If the denominators only are 0 then the lines are parallel
-    if(std::isinf(uA) || std::isinf(uB)) {
+    if (std::isinf(uA) || std::isinf(uB)) {
         return 0;
     }
 
-    if(uA < 0 || uA > 1 || uB < 0 || uB > 1) {
+    if (uA < 0 || uA > 1 || uB < 0 || uB > 1) {
         return 0;
     }
 
-    if(out != nullptr) {
+    if (out != nullptr) {
         out->x = x1 + uA * (x2 - x1);
         out->y = y1 + uA * (y2 - y1);
     }
-    return out;
+    return 1;
 }
 
 // template <typename PolygonT>
@@ -114,103 +143,121 @@ int ComputeIntersectionPoint(const PointT& a0, const PointT& a1,
 
 /// Create a new polygon that contains the intersection of the two polygons.
 /// Both polygons must be convex and right handed.
+///
+/// repeat
+/// {Check to see if p and q intersect}
+/// if p and q intersect then
+///    if this intersection is the same as the first intersection then halt
+///    else output the point of intersection and
+///    {set inside}
+///    if p in E hp(Q) then inside = "P"
+///    else inside = "Q "
+/// {Advance either p or q.}
+/// if q x p >= 0 then
+///    if p in hp(Q) then
+///      (advance q)
+///    else
+///      (advance p)
+/// else {
+///    if q in hp(p) then
+///      (advance p)
+///    else
+///      (advance q);
+/// until repeat has executed more than 2(| P | + | Q | times
 template <typename It, typename OutputIt>
-bool ComputeConvexPolygonIntersection(It beginA, It endA, It beginB, It endB,
-                                      OutputIt out) {
-    using PointT = decltype(*It);
-    thread_local std::vector<PointT> p1, p2, tmp;
-    p1.clear();
-    p2.clear();
-    tmp.clear();
+OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
+                                          It endB, OutputIt out) {
+    using PointT = typename std::remove_reference<decltype(*OutputIt{})>::type;
 
     // Find intersection of A into B
-    It itA, itB, itAn, itBn;
-    It interA = endA;
-    It interB = endB;
-    for (itA = beginA, itAn = std::next(beginA); interA == endA && itA != endA;
-         ++itA, ++itAn) {
-        itAn = (itAn == endA ? beginA : itAn);
+    size_t n = std::distance(beginA, endA) + std::distance(beginB, endB);
+    int inside = 0;  // 1 => A, 2 => B
+    It firstIntA = endA;
+    It firstIntB = endB;
+    It itA = beginA;
+    It itB = beginB;
+    It itAn = std::next(beginA);
+    It itBn = std::next(beginB);
+    PointT tmp;
+    for (size_t i = 0; i < n; ++i) {
+        // TODO handle coincident lines
+        if (ComputeIntersectionPoint<PointT>(*itA, *itAn, *itB, *itBn, &tmp) ==
+            1) {
+            // Check if we have seen this intersection before
+            if (inside == 0) {
+                firstIntA = itA;
+                firstIntB = itB;
+            } else if (firstIntA == itA && firstIntB == itB) {
+                // already saw this intersection, done
+                break;
+            }
+            *out++ = tmp;
 
-        for (itB = beginB, itBn = std::next(beginB);
-             interA == endA && itB != endB; ++itB, ++itBn) {
-            itBn = (itBn == endB ? beginB : itBn);
+            // TODO handle on line
+            auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
+            assert(side != 0);
+            if (side > 0) {
+                // bn to the left of a -- an, thenrefore it is inside a
+                inside = 1;
+            } else {
+                // bn to the right of a -- an, thenrefore it is inside b
+                inside = 2;
+            }
+        }
 
-            if (ComputeIntersectionPoint(*itA, *itAn, *itB, *itBn) > 0) {
-                interA = itA;
-                interB = itB;
+        // Advance either p or q
+        if (inter_impl::Cross(*itA, *itAn, *itB, *itBn) >= 0) {
+            auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
+            assert(side != 0);
+            if (side > 0) {
+                // advance A
+                inter_impl::Advance(inside == 1, beginB, endB, out, itB, itBn);
+            } else {
+                // advance B
+                inter_impl::Advance(inside == 2, beginA, endA, out, itA, itAn);
+            }
+        } else {
+            auto side = inter_impl::LineSide(*itB, *itBn, *itAn);
+            assert(side != 0);
+            if (side > 0) {
+                // advance B
+                inter_impl::Advance(inside == 2, beginB, endB, out, itB, itBn);
+            } else {
+                // advance A
+                inter_impl::Advance(inside == 1, beginA, endA, out, itA, itAn);
             }
         }
     }
 
-    if (interA == endA) {
+    if (inside == 0) {
         // No intersection found
-        if (PointInPolygon(beginA, endA, *beginB)) {
+        if (PointInPolygon(*beginB, beginA, endA)) {
             // b completely inside A
-            std::copy(beginB, endB, out);
-            return true
-        } else if (PointInPolygon(beginB, endB, *beginA)) {
+            return std::copy(beginB, endB, out);
+        } else if (PointInPolygon(*beginA, beginB, endB)) {
             // a completely inside b
-            std::copy(beginA, endA, out);
-            return true
+            return std::copy(beginA, endA, out);
         } else {
-            return false;
+            // out never changed, just return it
+            return out;
         }
     };
+    return out;
+}
 
-    bool followA = false;
-    bool followB = false;
-    itA = interA;
-    itB = interB;
-    itAn = std::next(itA);
-    itBn = std::next(itB);
-    PointT tmp;
-    do {
-        int ret = ComputeIntersectionPoint(*itA, *itAn, *itB, *itBn, &tmp);
-        if (ret == 0) {
-            // no intersection
-        } else if (ret == 1) {
-            // Add intersection point, recompute insideA
-            *out = tmp;
-            int side = LineSide(*itA, *itAn, *itBn);
-            if (side > 0) {
-                // B-next is to the left of a's line, therefore the line is
-                // entering A
-                followA = true;
-                ++itA;
-                ++itAn;
-                itAn = (itAn == endA ? beginA : itAn);
-            } else if (side < 0) {
-                // B-next is to the right of a's line, therefore the line is
-                // entering B
-                followB = true;
-                ++itB;
-                ++itBn;
-                itBn = (itBn == endB ? beginB : itBn);
-            } else {
-                // bn is on a--aN,
-                side = LineSide(*itB, *itBn, *itAn);
-                if (side < 0) {
-                } else if (side > 0) {
-                } else {
-                }
-            }
-        } else if (ret == 2) {
-            // coincident
-            // TODO handle this by adding last of (itA, itB), first of itAn,
-            // itBn)
-            assert(false);
-        }
-        // inside A, walk around B until we find a line that directed to
-        // the left of our current line on A.
-        ... ++itA;
-    }
-    else {
-        // inside B, walk around A until we find a line that directed to
-        // the left of our current line on B.
-        ++itB;
+/// Create a new polygon that contains the intersection of the two polygons.
+/// Both polygons must be convex and right handed.
+///
+template <typename PolygonT>
+bool ComputeConvexPolygonIntersection(const PolygonT& poly1,
+                                      const PolygonT& poly2, PolygonT* out) {
+    out->resize(poly1.size() + poly2.size());
+    auto end = ComputeConvexPolygonIntersection(
+        poly1.begin(), poly1.end(), poly2.begin(), poly2.end(), out->begin());
+    out->resize(std::distance(out->begin(), end));
+    if (end == out->begin()) {
+        return false;
+    } else {
+        return true;
     }
 }
-else {
-}
-}
-while (itA != interA && itB != interB) }

@@ -17,18 +17,27 @@ void MakeRegularPolygon(size_t n, float theta, It out) {
 
 template <typename It>
 void MakeRegularPolygon(size_t n, It out) {
-    MakeRegularPolygon(n, 0.0f, out);
+    MakeRegularPolygon<It>(n, 0.0f, out);
+}
+
+template <typename PolygonT>
+void MakeRegularPolygon(size_t n, float theta, PolygonT* out) {
+    out->resize(n);
+    MakeRegularPolygon(n, theta, out->begin());
 }
 
 template <typename PolygonT>
 void MakeRegularPolygon(size_t n, PolygonT* out) {
-    out->resize(n);
-    MakeRegularPolygon(n, 0.0f, out->begin());
+    MakeRegularPolygon<PolygonT>(n, 0.0f, out);
 }
 
 template <typename PolygonT>
-PolygonT MakeRegularPolygon(size_t n) {
+PolygonT MakeRegularPolygon(size_t n, float theta) {
     PolygonT out(n);
-    MakeRegularPolygon(n, 0.0f, out.begin());
+    MakeRegularPolygon(n, theta, out.begin());
     return out;
+}
+template <typename PolygonT>
+PolygonT MakeRegularPolygon(size_t n) {
+    return MakeRegularPolygon<PolygonT>(n, 0.0f);
 }

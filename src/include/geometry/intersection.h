@@ -227,7 +227,7 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
         if (cross >= 0) {
             int side = inter_impl::LineSide(*itA, *itAn, *itBn);
             if (side == 0 && cross == 0) {
-                // colinear must advance whichever point is nearest
+                // colinear must advance whichever point is closest along line
                 double aDist = inter_impl::DistanceSquared(*itA, *itAn);
                 double bDist = inter_impl::DistanceSquared(*itA, *itBn);
                 if (aDist <= bDist) {
@@ -242,7 +242,9 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                 inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
                                     itAn);
             } else {
-                // advance B
+                // advance B, maybe side == 0, but lines aren't parallel so
+                // that just means b-next is on a, we need to add b-next to the
+                // output and advance b to continue inside a
                 inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
                                     itBn);
             }

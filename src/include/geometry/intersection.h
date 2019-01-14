@@ -3,9 +3,26 @@
 
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include <iterator>
 
 namespace inter_impl {
+
+template <typename PointA, typename PointB>
+bool AlmostEqual(const PointA& ptA, const PointB& ptB) {
+    // the machine epsilon has to be scaled to the magnitude of the values
+    // used and multiplied by the desired precision in ULPs (units in the
+    // last place)
+    constexpr int ULP = 2;
+
+    const double distSq =
+        std::pow(GetX(ptA) - GetX(ptB), 2) + std::pow(GetY(ptA) - GetY(ptB), 2);
+    const double mag = std::pow(GetX(ptA), 2) + std::pow(GetY(ptA), 2) +
+                       std::pow(GetX(ptB), 2) + std::pow(GetY(ptB), 2);
+    return distSq <= std::numeric_limits<double>::epsilon() * mag * ULP ||
+           distSq < std::numeric_limits<double>::min();
+}
+
 /// Return a new vector that is perpendicular, left to vec
 template <typename Vector>
 Vector ZCross(const Vector& vec) {
@@ -39,9 +56,9 @@ template <typename It, typename OutIt>
 void Advance(bool isInside, const It& begin, const It& end, OutIt& out, It& it,
              It& itn) {
     // advance B
-    if (isInside) {
-        *out++ = *itn;
-    }
+    //    if (isInside) {
+    //        *out++ = *itn;
+    //    }
     ++it;
     ++itn;
     if (it == end) {
@@ -171,59 +188,62 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
 
     // Find intersection of A into B
     size_t n = std::distance(beginA, endA) + std::distance(beginB, endB);
-    int inside = 0;  // 1 => A, 2 => B
-    It firstIntA = endA;
-    It firstIntB = endB;
+    char inside = 'X';  // 1 => A, 2 => B
+    OutputIt firstInt = out;
     It itA = beginA;
     It itB = beginB;
     It itAn = std::next(beginA);
     It itBn = std::next(beginB);
     PointT tmp;
     for (size_t i = 0; i < n; ++i) {
-        // TODO handle coincident lines
-        if (ComputeIntersectionPoint<PointT>(*itA, *itAn, *itB, *itBn, &tmp) ==
-            1) {
-            // Check if we have seen this intersection before
-            if (inside == 0) {
-                firstIntA = itA;
-                firstIntB = itB;
-            } else if (firstIntA == itA && firstIntB == itB) {
+        // NOTE: coincident lines are intentionally not handled, in so doing
+        // coincident segments will be left out of the intersection, but the
+        // shape will be correct
+        if (ComputeIntersectionPoint(*itA, *itAn, *itB, *itBn, &tmp) == 1) {
+            // Exit condition
+            if (inside != 'X' && inter_impl::AlmostEqual(tmp, *firstInt)) {
                 // already saw this intersection, done
                 break;
             }
+            std::cerr << "inside: " << inside << ", intersection at triangle:"
+                      << std::distance(beginA, itA)
+                      << ", square: " << std::distance(beginB, itB) << "), "
+                      << "(" << tmp.x << ", " << tmp.y << ")"
+                      << "first (" << firstInt->x << ", " << firstInt->y << ")"
+                      << std::endl;
             *out++ = tmp;
 
-            // TODO handle on line
             auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
-            assert(side != 0);
             if (side > 0) {
-                // bn to the left of a -- an, thenrefore it is inside a
-                inside = 1;
+                // bn to the left of a -- an, therefore it is inside a
+                inside = 'A';
             } else {
-                // bn to the right of a -- an, thenrefore it is inside b
-                inside = 2;
+                // bn to the right of a -- an, therefore it is inside b
+                inside = 'B';
             }
         }
 
         // Advance either p or q
         if (inter_impl::Cross(*itA, *itAn, *itB, *itBn) >= 0) {
             auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
-            assert(side != 0);
             if (side > 0) {
                 // advance A
-                inter_impl::Advance(inside == 1, beginB, endB, out, itB, itBn);
+                std::cerr << "advance triangle" << std::endl;
+                inter_impl::Advance(inside == 2, beginA, endA, out, itA, itAn);
             } else {
                 // advance B
-                inter_impl::Advance(inside == 2, beginA, endA, out, itA, itAn);
+                std::cerr << "advance square" << std::endl;
+                inter_impl::Advance(inside == 1, beginB, endB, out, itB, itBn);
             }
         } else {
             auto side = inter_impl::LineSide(*itB, *itBn, *itAn);
-            assert(side != 0);
             if (side > 0) {
                 // advance B
+                std::cerr << "advance square" << std::endl;
                 inter_impl::Advance(inside == 2, beginB, endB, out, itB, itBn);
             } else {
                 // advance A
+                std::cerr << "advance triangle" << std::endl;
                 inter_impl::Advance(inside == 1, beginA, endA, out, itA, itAn);
             }
         }

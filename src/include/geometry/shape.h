@@ -19,3 +19,16 @@ template <typename It>
 void MakeRegularPolygon(size_t n, It out) {
     MakeRegularPolygon(n, 0.0f, out);
 }
+
+template <typename PolygonT>
+void MakeRegularPolygon(size_t n, PolygonT* out) {
+    out->resize(n);
+    MakeRegularPolygon(n, 0.0f, out->begin());
+}
+
+template <typename PolygonT>
+PolygonT MakeRegularPolygon(size_t n) {
+    PolygonT out(n);
+    MakeRegularPolygon(n, 0.0f, out.begin());
+    return out;
+}

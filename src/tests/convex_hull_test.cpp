@@ -1,5 +1,5 @@
-#include "convex_hull.h"
-#include "shape.h"
+#include "geometry/convex_hull.h"
+#include "geometry/shape.h"
 
 #include "gtest/gtest.h"
 

@@ -1,5 +1,5 @@
-#include "intersection.h"
-#include "shape.h"
+#include "geometry/intersection.h"
+#include "geometry/shape.h"
 
 #include "gtest/gtest.h"
 

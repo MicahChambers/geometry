@@ -56,9 +56,10 @@ template <typename It, typename OutIt>
 void Advance(bool isInside, const It& begin, const It& end, OutIt& out, It& it,
              It& itn) {
     // advance B
-    //    if (isInside) {
-    //        *out++ = *itn;
-    //    }
+    if (isInside) {
+        std::cerr << "add: " << it->x << ", " << it->y << std::endl;
+        *out++ = *itn;
+    }
     ++it;
     ++itn;
     if (it == end) {
@@ -205,12 +206,11 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
                 // already saw this intersection, done
                 break;
             }
-            std::cerr << "inside: " << inside << ", intersection at triangle:"
+            std::cerr << "inside: " << inside
+                      << ", intersection at triangle ind:"
                       << std::distance(beginA, itA)
-                      << ", square: " << std::distance(beginB, itB) << "), "
-                      << "(" << tmp.x << ", " << tmp.y << ")"
-                      << "first (" << firstInt->x << ", " << firstInt->y << ")"
-                      << std::endl;
+                      << ", square ind: " << std::distance(beginB, itB) << ", "
+                      << "(" << tmp.x << ", " << tmp.y << ")" << std::endl;
             *out++ = tmp;
 
             auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
@@ -224,27 +224,34 @@ OutputIt ComputeConvexPolygonIntersection(It beginA, It endA, It beginB,
         }
 
         // Advance either p or q
+        std::cerr << "inside: " << (inside == 'A' ? "triangle" : "square")
+                  << " ind triangle: " << std::distance(beginA, itA)
+                  << " ind square: " << std::distance(beginB, itB) << std::endl;
         if (inter_impl::Cross(*itA, *itAn, *itB, *itBn) >= 0) {
             auto side = inter_impl::LineSide(*itA, *itAn, *itBn);
             if (side > 0) {
                 // advance A
                 std::cerr << "advance triangle" << std::endl;
-                inter_impl::Advance(inside == 2, beginA, endA, out, itA, itAn);
+                inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
+                                    itAn);
             } else {
                 // advance B
                 std::cerr << "advance square" << std::endl;
-                inter_impl::Advance(inside == 1, beginB, endB, out, itB, itBn);
+                inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
+                                    itBn);
             }
         } else {
             auto side = inter_impl::LineSide(*itB, *itBn, *itAn);
             if (side > 0) {
                 // advance B
                 std::cerr << "advance square" << std::endl;
-                inter_impl::Advance(inside == 2, beginB, endB, out, itB, itBn);
+                inter_impl::Advance(inside == 'A', beginB, endB, out, itB,
+                                    itBn);
             } else {
                 // advance A
                 std::cerr << "advance triangle" << std::endl;
-                inter_impl::Advance(inside == 1, beginA, endA, out, itA, itAn);
+                inter_impl::Advance(inside == 'B', beginA, endA, out, itA,
+                                    itAn);
             }
         }
     }

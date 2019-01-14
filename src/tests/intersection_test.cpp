@@ -62,4 +62,31 @@ TEST(Intersection, TriangleSquare2) {
     }
 }
 
+TEST(Intersection, TriangleSquare3) {
+    auto poly1 = MakeRegularPolygon<std::vector<Point2f>>(3);
+    auto poly2 = MakeRegularPolygon<std::vector<Point2f>>(4, M_PI / 4);
+    for (auto& pt : poly2) {
+        pt.x += 0.22;
+    }
+    std::vector<Point2f> out(poly1.size() + poly2.size());
+    EXPECT_TRUE(ComputeConvexPolygonIntersection<std::vector<Point2f>>(
+        poly1, poly2, &out));
+
+    std::vector<Point2f> expected{
+        {-0.2247449, 0.707107},   {-0.48710677, 0.707107},
+        {-0.48710677, -0.707107}, {-0.2247449, -0.707107},
+        {0.927107, -0.042084951}, {0.927107, 0.042084951},
+    };
+
+    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
+        EXPECT_FLOAT_EQ(expected[i].x, out[i].x);
+        EXPECT_FLOAT_EQ(expected[i].y, out[i].y);
+    }
+    ASSERT_EQ(expected.size(), out.size());
+    for (size_t i = 0; i < std::min(expected.size(), out.size()); ++i) {
+        ASSERT_FLOAT_EQ(expected[i].x, out[i].x);
+        ASSERT_FLOAT_EQ(expected[i].y, out[i].y);
+    }
+}
+
 }  // namespace
